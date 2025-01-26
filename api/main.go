@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -247,7 +248,7 @@ func handleNormalResponse(w http.ResponseWriter, question, sessionID string, mes
 }
 
 func makeHeckRequest(question, sessionID string, messages []Message, actualModel string) *http.Response {
-	url := "https://gateway.heck.ai/api/ha/v1/chat"
+	apiURL := "https://gateway.heck.ai/api/ha/v1/chat"
 
 	var previousQuestion, previousAnswer string
 	messagesLen := len(messages)
@@ -273,7 +274,21 @@ func makeHeckRequest(question, sessionID string, messages []Message, actualModel
 	}
 
 	jsonData, _ := json.Marshal(requestBody)
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, _ := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+
+	// Proxy configuration
+	proxyURL, err := url.Parse("http://F4mYp7mbBzmm:EPc2xh8yODIK@superproxy.zenrows.com:1338")
+	if err != nil {
+		fmt.Printf("[Error] Failed to parse proxy URL: %v\n", err)
+		return nil
+	}
+
+	// Create a custom HTTP client with the proxy
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		},
+	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0")
@@ -286,7 +301,6 @@ func makeHeckRequest(question, sessionID string, messages []Message, actualModel
 	req.Header.Set("Sec-Fetch-Mode", "cors")
 	req.Header.Set("Sec-Fetch-Dest", "empty")
 
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Printf("[Error] Failed to make request: %v\n", err)
